@@ -3,7 +3,7 @@ export type Position = 'S' | 'OH' | 'OPP' | 'MB' | 'L';
 // Personality Systems
 export type SetterStyle = 'QUICK_MIDDLE' | 'HIGH_OUTSIDE' | 'BALANCED' | 'DUMP_HAPPY';
 export type HitterStyle = 'LINE' | 'CROSS' | 'POWER' | 'TIP';
-export type BlockerStyle = 'READ' | 'GUESS' | 'COMMIT';
+export type BlockerStyle = 'READ' | 'COMMIT' | 'SWING' | 'GUESS';
 export type ServeStyle = 'FLOAT' | 'JUMP' | 'HYBRID';
 
 export type Trait = 'Ace Server' | 'Fraud' | 'Wall Blocker' | 'Wall Stopper' | 'Injury Prone' | 'Clutch Player' | 'Ironman' | 'Floor General' | 'Quick Snap' | 'Scrappy' | 'Glass Cannon';
@@ -43,7 +43,10 @@ export interface MatchStats {
   kills: number;
   errors: number;
   attempts: number;
-  blocks: number;
+  blocks: number; // Total kill blocks (for legacy/summary)
+  killBlocks: number;
+  softBlocks: number;
+  blockOuts: number;
   digs: number;
   aces: number;
   assists: number;
@@ -63,6 +66,7 @@ export interface Player {
   personality: PlayerPersonality;
   traits: Trait[];
   injury?: PlayerInjury;
+  faceCode?: string;
   salary: number;
   contractYears: number;
   careerStats?: {
@@ -168,6 +172,32 @@ export interface Achievement {
   icon?: string;
 }
 
+export interface RandomEventChoice {
+  text: string;
+  impact: string;
+  resultDescription: string;
+}
+
+export interface RandomEvent {
+  id: string;
+  type: 'INJURY' | 'HOLIDAY' | 'DISPUTE' | 'MORALE';
+  title: string;
+  description: string;
+  targetPlayerId?: string;
+  choices?: RandomEventChoice[];
+  effect?: {
+    type: 'STAT_CHANGE';
+    stat: string;
+    value: number;
+    duration: number;
+  };
+}
+
+export interface LeagueSettings {
+  isGodMode: boolean;
+  difficulty: 'EASY' | 'NORMAL' | 'HARD';
+}
+
 // Save Game structure
 export interface SaveGame {
   version: number;
@@ -176,4 +206,5 @@ export interface SaveGame {
   teams: Team[];
   season: any; // Season type — using any to avoid circular import
   savedAt: string;
+  settings: LeagueSettings;
 }

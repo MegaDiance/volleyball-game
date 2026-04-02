@@ -6,7 +6,7 @@ import type { SaveGame } from '../engine/models';
 import { Trophy, Upload, RefreshCw, Play, Shuffle, Trash2, Database, Users } from 'lucide-react';
 
 interface LeagueCreatorProps {
-    onStart: (teams: Team[], myTeamId: string, leagueName: string) => void;
+    onStart: (teams: Team[], myTeamId: string, leagueName: string, settings: { isGodMode: boolean, difficulty: 'EASY' | 'NORMAL' | 'HARD' }) => void;
     onImport: (save: SaveGame) => void;
 }
 
@@ -34,6 +34,8 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
     const [importError, setImportError] = useState<string | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [localSaves, setLocalSaves] = useState<SaveGame[]>([]);
+    const [isGodMode, setIsGodMode] = useState(false);
+    const [difficulty, setDifficulty] = useState<'EASY' | 'NORMAL' | 'HARD'>('NORMAL');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -44,9 +46,9 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
         setLocalSaves(getLocalSaves());
     };
 
-    const handleDeleteLocal = (name: string) => {
-        if (confirm(`Are you sure you want to delete the save "${name}"?`)) {
-            deleteLocalSave(name);
+    const handleDeleteLocal = (save: SaveGame) => {
+        if (confirm(`Are you sure you want to delete the save "${save.leagueName}"?`)) {
+            deleteLocalSave((save as any).saveId || save.leagueName);
             refreshLocalSaves();
         }
     };
@@ -85,14 +87,10 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
     };
 
     const handleStart = () => {
-        const teams = entries.map(e => ({
-            ...e.team,
-            name: e.name,
-            location: e.location,
-        }));
         const myEntry = entries.find(e => e.isMyTeam);
-        const myTeamId = myEntry ? myEntry.team.id : teams[0].id;
-        onStart(teams, myTeamId, leagueName);
+        if (myEntry) {
+            onStart(entries.map(e => e.team), myEntry.team.id, leagueName, { isGodMode, difficulty });
+        }
     };
 
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +127,7 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
                                 <Trophy className="w-7 h-7 text-white" />
                             </div>
                             <h1 className="text-6xl font-black text-white tracking-tighter uppercase italic">
-                                Volley<span className="text-blue-500">GM</span>
+                                Court<span className="text-blue-500 text-6xl">Control</span>
                             </h1>
                         </div>
                         <p className="text-slate-500 text-lg font-bold tracking-tight max-w-md">
@@ -160,7 +158,7 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
                                     <RefreshCw className="w-4 h-4" />
                                 </button>
                             </div>
-                            <div className="max-h-[500px] overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                            <div className="p-4 space-y-3">
                                 {localSaves.length === 0 ? (
                                     <div className="py-12 px-6 text-center text-slate-600">
                                         <Database className="w-8 h-8 mx-auto mb-3 opacity-20" />
@@ -185,7 +183,7 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
                                                 </div>
                                             </div>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteLocal(save.leagueName); }}
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteLocal(save); }}
                                                 className="p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -218,7 +216,7 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
                         <section className="bg-slate-900/80 rounded-[40px] border border-white/5 p-8 shadow-3xl relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none"></div>
 
-                            <div className="flex flex-col md:flex-row gap-8 mb-10">
+                            <div className="flex flex-col md:flex-row gap-8 mb-8">
                                 <div className="flex-1">
                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-3 pl-1">Franchise Title</label>
                                     <input
@@ -243,6 +241,42 @@ export const LeagueCreator: React.FC<LeagueCreatorProps> = ({ onStart, onImport 
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                                <div className="p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-blue-500/30 transition-all">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] block">Gameplay Difficulty</label>
+                                        <span className="text-[10px] font-black text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full">{difficulty}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {(['EASY', 'NORMAL', 'HARD'] as const).map(d => (
+                                            <button
+                                                key={d}
+                                                onClick={() => setDifficulty(d)}
+                                                className={`flex-1 py-3 rounded-xl font-black text-[10px] tracking-widest transition-all border ${difficulty === d ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-900 border-white/5 text-slate-500 hover:text-white'}`}
+                                            >
+                                                {d}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[9px] text-slate-600 font-bold mt-4 leading-relaxed uppercase tracking-wider">Affects AI signing logic and simulation variance.</p>
+                                </div>
+
+                                <div className={`p-6 rounded-3xl border transition-all cursor-pointer ${isGodMode ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-white/5 border-white/5 hover:border-yellow-500/20'}`} onClick={() => setIsGodMode(!isGodMode)}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] block">God Mode</label>
+                                        <div className={`w-10 h-5 rounded-full relative transition-colors ${isGodMode ? 'bg-yellow-500' : 'bg-slate-800'}`}>
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isGodMode ? 'left-6' : 'left-1'}`}></div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <span className={`text-xs font-black uppercase tracking-tight ${isGodMode ? 'text-yellow-500' : 'text-slate-400'}`}>
+                                            {isGodMode ? 'Full Control Enabled' : 'Standard Rules'}
+                                        </span>
+                                    </div>
+                                    <p className="text-[9px] text-slate-600 font-bold mt-4 leading-relaxed uppercase tracking-wider">Unlocks player stat editing and full roster manipulation.</p>
                                 </div>
                             </div>
 

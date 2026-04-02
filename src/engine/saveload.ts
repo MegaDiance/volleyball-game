@@ -15,6 +15,7 @@ export function exportSave(
         teams,
         season,
         savedAt: new Date().toISOString(),
+        settings: season?.settings || { isGodMode: false, difficulty: 'NORMAL' }
     };
 
     const json = JSON.stringify(save, null, 2);
@@ -62,8 +63,9 @@ const STORAGE_KEY = 'volleyball_gm_saves';
 
 export function saveToLocal(save: SaveGame): void {
     const saves = getLocalSaves();
-    // Unique key: leagueName (or add a unique ID to SaveGame if needed)
-    const existingIdx = saves.findIndex(s => s.leagueName === save.leagueName);
+    // Use saveId for deduplication if present; otherwise fall back to leagueName (legacy)
+    const key = (save as any).saveId || save.leagueName;
+    const existingIdx = saves.findIndex(s => ((s as any).saveId || s.leagueName) === key);
     if (existingIdx >= 0) {
         saves[existingIdx] = save;
     } else {
@@ -82,8 +84,8 @@ export function getLocalSaves(): SaveGame[] {
     }
 }
 
-export function deleteLocalSave(leagueName: string): void {
+export function deleteLocalSave(saveId: string): void {
     const saves = getLocalSaves();
-    const filtered = saves.filter(s => s.leagueName !== leagueName);
+    const filtered = saves.filter(s => ((s as any).saveId || s.leagueName) !== saveId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
 }

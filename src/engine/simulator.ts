@@ -9,8 +9,19 @@ function generateId(): string {
 }
 
 const emptyStats = (teamId: string): MatchStats => ({
-    teamId, kills: 0, errors: 0, attempts: 0, blocks: 0,
-    digs: 0, aces: 0, assists: 0, passes: 0, performanceScore: 0
+    teamId,
+    kills: 0,
+    errors: 0,
+    attempts: 0,
+    blocks: 0,
+    killBlocks: 0,
+    softBlocks: 0,
+    blockOuts: 0,
+    digs: 0,
+    aces: 0,
+    assists: 0,
+    passes: 0,
+    performanceScore: 0,
 });
 
 export function createMatch(teamA: Team, teamB: Team): MatchState {
@@ -514,23 +525,34 @@ export function simulateNextTouch(match: MatchState, teamA: Team, teamB: Team) {
 
         // Blocker personality modifiers
         const blockerStyle = blocker.personality?.blockerStyle;
-        if (blockerStyle === 'READ') {
-            // Read blockers are consistent
-            blockPower += 5;
-        } else if (blockerStyle === 'GUESS') {
-            // Guess blockers are high variance — big reward or big miss
-            blockPower += randomInt(-15, 25);
-        } else if (blockerStyle === 'COMMIT') {
+        const useTendency = randomInt(1, 100) <= (blocker.personality?.tendencyStrength || 60);
+
+        if (blockerStyle === 'READ' && useTendency) {
+            // Read blockers are consistently in the right spot for touches
+            blockPower += 12;
+        } else if (blockerStyle === 'GUESS' && useTendency) {
+            // 50/50 chance to guess completely right or completely wrong
+            const guessedRight = Math.random() > 0.5;
+            if (guessedRight) {
+                blockPower += 45; // Massive bonus for being right
+            } else {
+                blockPower -= 35; // Big penalty for biting on the wrong hitter
+            }
+        } else if (blockerStyle === 'COMMIT' && useTendency) {
             // Commit blockers dominate quick sets but get burned by outside sets
-            if (attackZone === 'P3') blockPower += 20;
-            else blockPower -= 10;
+            if (attackZone === 'P3') blockPower += 25;
+            else blockPower -= 15;
+        } else if (blockerStyle === 'SWING' && useTendency) {
+            // High block rating bonus, but higher fatigue cost
+            blockPower += 15;
+            match.playerStamina[blocker.id] = Math.max(0, match.playerStamina[blocker.id] - 1.5);
         }
 
         // Hitter style vs block interaction
         if (hitterStyle === 'TIP' && blockPower > attackPower) {
             blockPower -= 15; // Tips are harder to stuff block
         }
-        if (hitterStyle === 'LINE') blockPower -= 5; // Line shots evade the block more
+        if (hitterStyle === 'LINE') blockPower -= 8; // Line shots evade the block more
 
         let digPower = balancedStat(digger.stats.digging, 22);
         digPower += getMomentumBonus(currentTeam.id);
@@ -543,28 +565,44 @@ export function simulateNextTouch(match: MatchState, teamA: Team, teamB: Team) {
         const courtTargetY = currentTeam.id === teamA.id ? 10 : 90;
 
         // Block Check
-        if (blockPower > attackPower + 10) {
-            stat(blocker.id, 'blocks');
+        let isStuff = blockPower > attackPower + 12;
+        
+        // Read blockers have a harder time stuffing even with high power (rare stuffs)
+        if (blockerStyle === 'READ' && useTendency && isStuff && Math.random() > 0.25) {
+            isStuff = false; 
+        }
+
+        if (isStuff) {
+            stat(blocker.id, 'killBlocks');
+            stat(blocker.id, 'blocks'); 
             const blockDesc = blockerStyle === 'COMMIT'
                 ? `COMMIT BLOCK by ${blocker.lastName}! Read it perfectly!`
                 : blockerStyle === 'GUESS'
-                    ? `${blocker.lastName} GUESSED RIGHT! Stuff block!`
+                    ? `${blocker.lastName} GUESSED RIGHT! Massive roof block!`
                     : `STUFF BLOCK by ${blocker.lastName}!`;
             log(blockDesc, 'BLOCK', blocker.id, currentTeam.id, attackZone === 'P4' ? 25 : 75, netY);
             awardPoint(match, currentTeam.id, teamA, teamB);
             return;
-        } else if (blockPower > attackPower - 5) {
-            if (randomInt(1, 100) > 70) {
+        } else if (blockPower > attackPower - 10) {
+            // Higher chance of block-out if block power is low (failed guess or just weak)
+            const blockOutChance = blockPower < attackPower ? 55 : 20;
+            
+            if (randomInt(1, 100) <= blockOutChance) {
+                stat(blocker.id, 'blockOuts');
                 stat(attacker.id, 'kills');
                 if (setter) stat(setter.id, 'assists');
-                log(`Tooled off ${blocker.lastName}'s block and out!`, 'POINT', attacker.id, attackerTeam.id, 50, netY);
+                log(`Tooled off ${blocker.lastName}'s block and out! (BLOCK-OUT)`, 'POINT', attacker.id, attackerTeam.id, 50, netY);
                 awardPoint(match, attackerTeam.id, teamA, teamB);
                 return;
             } else {
+                stat(blocker.id, 'softBlocks');
                 log(`Soft block touch by ${blocker.lastName}...`, 'BLOCK', blocker.id, undefined, 50, netY);
-                let reduction = 20;
+                let reduction = 25;
+                if (blockerStyle === 'READ' && useTendency) {
+                    reduction = 35; // Read blockers slow it down more
+                }
                 if (blocker.traits.includes('Wall Stopper')) {
-                    reduction = 35; // Wall Stopper reduces attack power more
+                    reduction += 15;
                     log(`Wall Stopper: ${blocker.lastName} slows it down significantly!`, 'BLOCK', blocker.id);
                 }
                 match.lastTouchQuality -= reduction;
@@ -676,7 +714,8 @@ function finishMatch(match: MatchState, winningTeamId: string) {
     const losingTeamId = match.teamAId === winningTeamId ? match.teamBId : match.teamAId;
     for (const pId of Object.keys(match.playerStats)) {
         const p = match.playerStats[pId];
-        p.performanceScore = (p.kills * 3) + (p.blocks * 4) + (p.aces * 4) + (p.digs * 1.5) + (p.assists * 1) + (p.passes * 0.5) - (p.errors * 2);
+        // Performance score: KB/Aces: 4, Kills: 3, SoftBlocks: 1, BlockOuts: -2, Errors: -2, Digs: 1.5, Assists: 1, Passes: 0.5
+        p.performanceScore = (p.kills * 3) + (p.killBlocks * 4) + (p.aces * 4) + (p.softBlocks * 1) + (p.digs * 1.5) + (p.assists * 1) + (p.passes * 0.5) - (p.errors * 2) - (p.blockOuts * 2);
     }
     const allIds = Object.keys(match.playerStats).sort((a, b) => match.playerStats[b].performanceScore - match.playerStats[a].performanceScore);
     match.matchMVP = allIds.find(id => match.playerStats[id].teamId === winningTeamId);

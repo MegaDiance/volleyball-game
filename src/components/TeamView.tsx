@@ -9,14 +9,14 @@ interface TeamViewProps {
     onBack: () => void;
     onUpdatePlayer: (playerId: string, updatedPlayer: Player) => void;
     onTransferPlayer: (action: 'SIGN' | 'RELEASE', player: Player) => void;
-
     allTeams: Team[];
     freeAgents: Player[];
     isMyTeam?: boolean;
+    isGodMode?: boolean;
     season?: any;
 }
 
-export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer, onTransferPlayer, allTeams, freeAgents = [], isMyTeam = false, season }) => {
+export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer, onTransferPlayer, allTeams, freeAgents = [], isMyTeam = false, isGodMode = false, season }) => {
     const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'ROSTER' | 'TACTICS' | 'FREE_AGENCY'>('ROSTER');
@@ -47,85 +47,96 @@ export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-6">
-            <button onClick={onBack} className="flex items-center text-blue-400 hover:text-blue-300 mb-6 font-semibold">
-                <ChevronLeft className="w-5 h-5 mr-1" /> Back to League
+        <div className="max-w-6xl mx-auto p-6 animate-in fade-in duration-500">
+            <button onClick={onBack} className="flex items-center gap-1.5 text-slate-400 hover:text-white mb-6 font-bold text-sm transition-colors group">
+                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Back to League
             </button>
 
-            <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-8 mb-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-4xl font-black text-white">{team.location} {team.name}</h1>
-                    <div className="flex gap-4">
-                        <p className="text-slate-400">Roster Size: {team.players.length}</p>
+            {/* Team Header */}
+            <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-3xl border border-white/5 p-8 mb-6 overflow-hidden backdrop-blur-sm">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div>
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1">{team.location}</div>
+                        <h1 className="text-4xl font-black text-white tracking-tight">{team.name}</h1>
+                        <div className="flex items-center gap-2 mt-3">
+                            <span className="px-2 py-0.5 bg-slate-700/80 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5">{team.players.length} Players</span>
+                            {isGodMode && <span className="px-2 py-0.5 bg-yellow-500/10 text-yellow-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-yellow-500/20">⚡ God Mode</span>}
+                        </div>
                     </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex gap-2 border-b border-slate-700 pb-2">
-                    <button onClick={() => setActiveTab('ROSTER')} className={`px-4 py-2 font-bold rounded-t-lg transition-colors ${activeTab === 'ROSTER' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}>Roster</button>
-                    {isMyTeam && <button onClick={() => setActiveTab('TACTICS')} className={`px-4 py-2 font-bold rounded-t-lg transition-colors ${activeTab === 'TACTICS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}>Tactics</button>}
-                    {isMyTeam && <button onClick={() => setActiveTab('FREE_AGENCY')} className={`px-4 py-2 font-bold rounded-t-lg transition-colors ${activeTab === 'FREE_AGENCY' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}>Free Agency</button>}
+                    <div className="flex gap-2">
+                        {(['ROSTER', ...(isMyTeam ? ['TACTICS', 'FREE_AGENCY'] : [])]).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab as any)}
+                                className={`px-5 py-2.5 text-sm font-black rounded-xl border transition-all ${activeTab === tab ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-900/30' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
+                            >
+                                {tab === 'FREE_AGENCY' ? 'Free Agency' : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                     {activeTab === 'ROSTER' && (
-                        <div className="bg-slate-800 rounded-xl shadow-xl border border-slate-700 overflow-hidden">
-                            <div className="p-4 bg-slate-800/80 border-b border-slate-700">
-                                <h2 className="text-xl font-bold">Current Roster</h2>
+                        <div className="space-y-1.5">
+                            <div className="grid items-center px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest"
+                                style={{gridTemplateColumns: '2.5rem 1fr 3.5rem 2.5rem 2.5rem 2.5rem 5rem'}}>
+                                <div></div>
+                                <div>Player</div>
+                                <div className="text-center">OVR</div>
+                                <div className="text-center">Age</div>
+                                <div className="text-center">Spk</div>
+                                <div className="text-center">Blk</div>
+                                {isMyTeam && <div className="text-center">Actions</div>}
                             </div>
-                            <table className="w-full text-left text-sm text-slate-300">
-                                <thead className="bg-slate-900/50 text-slate-400 uppercase font-bold text-xs">
-                                    <tr>
-                                        <th className="px-6 py-3">Pos</th>
-                                        <th className="px-6 py-3">Player</th>
-                                        <th className="px-6 py-3 text-center text-emerald-400">OVR</th>
-                                        <th className="px-6 py-3 text-center">Age</th>
-                                        <th className="px-6 py-3">Spk</th>
-                                        <th className="px-6 py-3">Blk</th>
-                                        <th className="px-6 py-3">Rcv</th>
-                                        {isMyTeam && <th className="px-6 py-3 text-right">Action</th>}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-700/50">
-                                    {team.players.map(player => (
-                                        <tr key={player.id} className="hover:bg-slate-700/30 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-blue-400">{player.position}</td>
-                                            <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => setSelectedPlayerId(player.id)}
-                                                    className="font-bold text-white hover:text-blue-400 transition-colors"
-                                                >
-                                                    {player.firstName} {player.lastName}
-                                                </button>
-                                                {(player.traits || []).length > 0 && (
-                                                    <span className="ml-2 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase rounded border border-blue-500/30">
-                                                        {player.traits[0]}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-black text-lg text-emerald-400">{player.overall}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`font-bold text-sm px-2 py-0.5 rounded-full ${player.age < 22 ? 'text-yellow-400 bg-yellow-900/20' :
-                                                    player.age <= 28 ? 'text-emerald-400 bg-emerald-900/20' :
-                                                        player.age <= 31 ? 'text-yellow-400 bg-yellow-900/20' :
-                                                            'text-red-400 bg-red-900/20'
-                                                    }`}>{player.age ?? '?'}</span>
-                                            </td>
-                                            <td className="px-6 py-4">{player.stats.spiking}</td>
-                                            <td className="px-6 py-4">{player.stats.blocking}</td>
-                                            <td className="px-6 py-4">{player.stats.receive}</td>
-                                            {isMyTeam && (
-                                                <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => setEditingPlayer(player)} className="text-blue-400 hover:text-white text-xs font-semibold px-3 py-1 bg-blue-900/30 rounded-full border border-blue-800/50 hover:bg-blue-600 transition-colors mr-2">Edit</button>
-                                                    <button onClick={() => onTransferPlayer('RELEASE', player)} className="text-red-400 hover:text-white text-xs font-semibold px-3 py-1 bg-red-900/30 rounded-full border border-red-800/50 hover:bg-red-600 transition-colors">Release</button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            {team.players.map(player => (
+                                <div
+                                    key={player.id}
+                                    className={`grid items-center px-4 py-3 rounded-2xl border transition-all ${player.injury ? 'bg-red-500/5 border-red-500/10 hover:bg-red-500/10' : 'bg-slate-800/40 border-white/5 hover:bg-white/5 hover:border-white/10'}`}
+                                    style={{gridTemplateColumns: '2.5rem 1fr 3.5rem 2.5rem 2.5rem 2.5rem 5rem'}}
+                                >
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-black border ${
+                                        player.position === 'OH' ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' :
+                                        player.position === 'OPP' ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' :
+                                        player.position === 'MB' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' :
+                                        player.position === 'S' ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400' :
+                                        'bg-orange-500/20 border-orange-500/30 text-orange-400'
+                                    }`}>
+                                        {player.position}
+                                    </div>
+                                    <div className="min-w-0 px-3">
+                                        <button
+                                            onClick={() => setSelectedPlayerId(player.id)}
+                                            className="font-bold text-white hover:text-blue-400 transition-colors text-sm leading-tight truncate block"
+                                        >
+                                            {player.firstName} {player.lastName}
+                                        </button>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            {player.injury && <span className="text-[9px] font-black text-red-400">🏥 {player.injury.weeksLeft}w out</span>}
+                                            {(player.traits || []).slice(0,1).map(t => (
+                                                <span key={t} className="text-[9px] font-black text-blue-400/70">{t}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className={`text-center font-black text-base ${player.overall >= 85 ? 'text-yellow-400' : player.overall >= 70 ? 'text-emerald-400' : 'text-slate-300'}`}>{player.overall}</div>
+                                    <div className={`text-center text-sm font-bold ${player.age <= 21 ? 'text-yellow-400' : player.age <= 28 ? 'text-slate-300' : player.age <= 31 ? 'text-orange-400' : 'text-red-400'}`}>{player.age}</div>
+                                    <div className="text-center text-slate-400 text-sm">{player.stats.spiking}</div>
+                                    <div className="text-center text-slate-400 text-sm">{player.stats.blocking}</div>
+                                    {isMyTeam && (
+                                        <div className="flex gap-1 justify-end">
+                                            {isGodMode
+                                                ? <button onClick={() => setEditingPlayer(player)} className="px-2 py-1 text-[9px] font-black text-yellow-400 bg-yellow-500/10 rounded-lg border border-yellow-500/20 hover:bg-yellow-500/20 transition-all">⚡</button>
+                                                : <span className="px-2 py-1 text-[9px] text-slate-700 bg-white/5 rounded-lg border border-white/5 cursor-not-allowed">🔒</span>
+                                            }
+                                            <button onClick={() => onTransferPlayer('RELEASE', player)} className="px-2 py-1 text-[9px] font-black text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all">Cut</button>
+                                        </div>
+                                    )}
+                                    {!isMyTeam && <div />}
+                                </div>
+                            ))}
                         </div>
                     )}
 
@@ -204,6 +215,62 @@ export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer
                         </div>
                     )}
                 </div>
+
+                {/* Sidebar */}
+                <div className="space-y-4">
+                    {/* Roster Breakdown */}
+                    <div className="bg-slate-800/40 rounded-2xl border border-white/5 p-5">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">Roster Breakdown</div>
+                        {(['S','OH','OPP','MB','L'] as const).map(pos => {
+                            const count = team.players.filter(p => p.position === pos).length;
+                            const avgOvr = count > 0 ? Math.round(team.players.filter(p => p.position === pos).reduce((s,p) => s + p.overall, 0) / count) : 0;
+                            return count > 0 ? (
+                                <div key={pos} className="flex items-center gap-3 mb-3">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-black border flex-shrink-0 ${
+                                        pos === 'OH' ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' :
+                                        pos === 'OPP' ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' :
+                                        pos === 'MB' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' :
+                                        pos === 'S' ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400' :
+                                        'bg-orange-500/20 border-orange-500/30 text-orange-400'
+                                    }`}>{pos}</div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between text-xs mb-1">
+                                            <span className="text-slate-300 font-bold">{count} player{count > 1 ? 's' : ''}</span>
+                                            <span className={`font-black ${avgOvr >= 80 ? 'text-yellow-400' : avgOvr >= 70 ? 'text-emerald-400' : 'text-slate-400'}`}>{avgOvr} avg</span>
+                                        </div>
+                                        <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+                                            <div className={`h-full rounded-full ${
+                                                pos === 'OH' ? 'bg-blue-500' :
+                                                pos === 'OPP' ? 'bg-purple-500' :
+                                                pos === 'MB' ? 'bg-emerald-500' :
+                                                pos === 'S' ? 'bg-yellow-500' : 'bg-orange-500'
+                                            }`} style={{width: `${avgOvr}%`}} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null;
+                        })}
+                    </div>
+
+                    {/* Age Profile */}
+                    <div className="bg-slate-800/40 rounded-2xl border border-white/5 p-5">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">Age Profile</div>
+                        {[
+                            { label: 'Prospects', emoji: '🌱', range: [17,21], color: 'text-yellow-400' },
+                            { label: 'Prime', emoji: '⚡', range: [22,28], color: 'text-emerald-400' },
+                            { label: 'Veteran', emoji: '🎖️', range: [29,32], color: 'text-orange-400' },
+                            { label: 'Aging', emoji: '⏳', range: [33,99], color: 'text-red-400' },
+                        ].map(({ label, emoji, range, color }) => {
+                            const count = team.players.filter(p => p.age >= range[0] && p.age <= range[1]).length;
+                            return count > 0 ? (
+                                <div key={label} className="flex items-center justify-between mb-2">
+                                    <span className="text-slate-400 text-sm">{emoji} {label}</span>
+                                    <span className={`font-black text-sm ${color}`}>{count}</span>
+                                </div>
+                            ) : null;
+                        })}
+                    </div>
+                </div>
             </div>
 
             {/* Editing Modal */}
@@ -237,14 +304,19 @@ export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer
                         <div className="mt-4 pt-3 border-t border-slate-700">
                             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Personality</h3>
                             <div className="space-y-2">
-                                {(editingPlayer.position === 'S' || editingPlayer.position === 'OH' || editingPlayer.position === 'OPP' || editingPlayer.position === 'MB') && (
+                                {(editingPlayer.position === 'S' || editingPlayer.position === 'OH' || editingPlayer.position === 'OPP' || editingPlayer.position === 'MB' || editingPlayer.position === 'L') && (
                                     <div className="flex items-center justify-between">
                                         <label className="text-slate-400 font-bold text-[10px] uppercase">Style</label>
                                         <select
                                             className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-white text-[10px] font-bold w-36"
-                                            value={editingPlayer.position === 'S' ? (editingPlayer.personality?.setterStyle || 'BALANCED') : (editingPlayer.personality?.hitterStyle || 'POWER')}
+                                            value={
+                                                editingPlayer.position === 'S' ? (editingPlayer.personality?.setterStyle || 'BALANCED') :
+                                                (editingPlayer.position === 'MB' || editingPlayer.position === 'L') ? (editingPlayer.personality?.blockerStyle || 'READ') :
+                                                (editingPlayer.personality?.hitterStyle || 'POWER')
+                                            }
                                             onChange={e => {
-                                                const key = editingPlayer.position === 'S' ? 'setterStyle' : 'hitterStyle';
+                                                const key = editingPlayer.position === 'S' ? 'setterStyle' :
+                                                    (editingPlayer.position === 'MB' || editingPlayer.position === 'L') ? 'blockerStyle' : 'hitterStyle';
                                                 setEditingPlayer({
                                                     ...editingPlayer,
                                                     personality: { ...editingPlayer.personality, [key]: e.target.value }
@@ -257,6 +329,13 @@ export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer
                                                     <option value="QUICK_MIDDLE">Quick Middle</option>
                                                     <option value="HIGH_OUTSIDE">High Outside</option>
                                                     <option value="DUMP_HAPPY">Dump Happy</option>
+                                                </>
+                                            ) : (editingPlayer.position === 'MB' || editingPlayer.position === 'L') ? (
+                                                <>
+                                                    <option value="READ">Read (Reactive)</option>
+                                                    <option value="COMMIT">Commit (Aggressive)</option>
+                                                    <option value="SWING">Swing (Balanced)</option>
+                                                    <option value="GUESS">Guess (Coin Flip)</option>
                                                 </>
                                             ) : (
                                                 <>
@@ -284,7 +363,6 @@ export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer
                             </div>
                         </div>
 
-                        {/* Special Traits Editing */}
                         <div className="mt-4 pt-3 border-t border-slate-700">
                             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex justify-between">
                                 <span>Special Archetype</span>
@@ -328,6 +406,23 @@ export const TeamView: React.FC<TeamViewProps> = ({ team, onBack, onUpdatePlayer
                                 })}
                             </div>
                         </div>
+
+                        {/* Face Code Editing (God Mode Only) */}
+                        {isGodMode && (
+                            <div className="mt-4 pt-3 border-t border-slate-700">
+                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex justify-between">
+                                    <span>Face Code</span>
+                                    <span className="text-yellow-400">God Mode</span>
+                                </h3>
+                                <input
+                                    type="text"
+                                    value={editingPlayer.faceCode || ''}
+                                    placeholder="Paste face code here"
+                                    onChange={e => setEditingPlayer({ ...editingPlayer, faceCode: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-white font-mono text-[10px] focus:border-yellow-500 focus:outline-none transition-colors"
+                                />
+                            </div>
+                        )}
 
                         <div className="mt-6 flex gap-3">
                             <button onClick={() => setEditingPlayer(null)} className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm rounded-xl transition-colors">Cancel</button>

@@ -3,10 +3,12 @@ import { LeagueCreator } from './components/LeagueCreator';
 import { SeasonView } from './components/SeasonView';
 import { MatchView } from './components/MatchView';
 import { TeamView } from './components/TeamView';
+import { EventAlertModal } from './components/EventAlertModal';
 import { createSeason } from './engine/season';
 import { applyAgeProgression, ALL_TRAITS } from './engine/generator';
 import { createMatch, advanceRallyLoop } from './engine/simulator';
-import type { Team, Player, MatchState, SaveGame } from './engine/models';
+import { generateWeeklyEvents } from './engine/events';
+import type { Team, Player, MatchState, SaveGame, RandomEvent } from './engine/models';
 import type { Season } from './engine/season';
 import { exportSave, saveToLocal } from './engine/saveload';
 import { Trophy, Download } from 'lucide-react';
@@ -18,6 +20,7 @@ function App() {
   const [season, setSeason] = useState<Season | null>(null);
   const [viewState, setViewState] = useState<AppState>('LOBBY');
   const [leagueName, setLeagueName] = useState('My League');
+  const [pendingEvent, setPendingEvent] = useState<RandomEvent | null>(null);
 
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   interface PendingMatchIds {
@@ -39,7 +42,8 @@ function App() {
       myTeamId: currentMyTeamId,
       teams: currentTeams,
       season: currentSeason,
-      savedAt: timestamp
+      savedAt: timestamp,
+      settings: currentSeason.settings
     });
   };
 
@@ -74,8 +78,8 @@ function App() {
     return { updatedTeams: newTeams, updatedFA: newFA };
   };
 
-  const handleLeagueStart = (newTeams: Team[], newMyTeamId: string, newLeagueName: string) => {
-    const newSeason = createSeason(newTeams);
+  const handleLeagueStart = (newTeams: Team[], newMyTeamId: string, newLeagueName: string, settings: any) => {
+    const newSeason = createSeason(newTeams, 1, [], settings);
     setTeams(newTeams);
     setSeason(newSeason);
     setMyTeamId(newMyTeamId);
@@ -220,6 +224,13 @@ function App() {
         nextTeamsState = aiTeams;
         nextSeasonState = { ...season, week: season.week + 1, freeAgents: updatedFA };
         setTeams(nextTeamsState);
+
+        // Generate weekly events
+        const newEvents = generateWeeklyEvents(nextTeamsState, nextSeasonState.week, myTeamId);
+        if (newEvents.length > 0) {
+          nextSeasonState = { ...nextSeasonState, pendingEvents: newEvents };
+          setPendingEvent(newEvents[0]);
+        }
       }
       setSeason(nextSeasonState);
       saveState(nextTeamsState, nextSeasonState, myTeamId, leagueName);
@@ -400,7 +411,8 @@ function App() {
         myTeamId,
         teams: updatedTeams,
         season: s,
-        savedAt: new Date().toISOString()
+        savedAt: new Date().toISOString(),
+        settings: s.settings
       });
     }
 
@@ -457,7 +469,8 @@ function App() {
       myTeamId,
       teams: updatedTeams,
       season: nextSeason,
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
+      settings: nextSeason.settings
     });
   };
 
@@ -585,7 +598,8 @@ function App() {
         myTeamId,
         teams: updatedTeams,
         season,
-        savedAt: new Date().toISOString()
+        savedAt: new Date().toISOString(),
+        settings: season.settings
       });
     }
   };
@@ -631,36 +645,107 @@ function App() {
 
   if (!season) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
 
+  const handleEventResolution = (choiceIndex?: number) => {
+    if (!season || !pendingEvent) return;
+    let nextTeams = [...teams];
+
+    if (pendingEvent.type === 'HOLIDAY' && choiceIndex === 1) {
+      nextTeams = nextTeams.map(team => ({
+        ...team,
+        players: team.players.map(p => {
+          if (p.id === pendingEvent.targetPlayerId) {
+            return { ...p, injury: { type: 'Frustrated – reduced performance', weeksLeft: 2 } };
+          }
+          return p;
+        })
+      }));
+    }
+    if (pendingEvent.type === 'INJURY' && pendingEvent.targetPlayerId) {
+      const weeks = pendingEvent.effect?.duration || 1;
+      nextTeams = nextTeams.map(team => ({
+        ...team,
+        players: team.players.map(p => {
+          if (p.id === pendingEvent.targetPlayerId) {
+            return { ...p, injury: { type: 'Twisted ankle', weeksLeft: weeks } };
+          }
+          return p;
+        })
+      }));
+    }
+    if (pendingEvent.type === 'HOLIDAY' && choiceIndex === 0) {
+      nextTeams = nextTeams.map(team => ({
+        ...team,
+        players: team.players.map(p => {
+          if (p.id === pendingEvent.targetPlayerId) {
+            return { ...p, injury: { type: 'Approved leave', weeksLeft: 1 } };
+          }
+          return p;
+        })
+      }));
+    }
+    if (pendingEvent.type === 'MORALE' && pendingEvent.targetPlayerId) {
+      nextTeams = nextTeams.map(team => ({
+        ...team,
+        players: team.players.map(p => {
+          if (p.id === pendingEvent.targetPlayerId) {
+            return { ...p, overall: Math.min(99, p.overall + 3) };
+          }
+          return p;
+        })
+      }));
+    }
+
+    setTeams(nextTeams);
+    const s = { ...season, pendingEvents: [] };
+    setSeason(s);
+    saveState(nextTeams, s, myTeamId, leagueName);
+    setPendingEvent(null);
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/30">
-      {/* Premium Header / Navigation */}
-      <div className="bg-slate-800/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      {/* Event Alert Overlay */}
+      {pendingEvent && (
+        <EventAlertModal event={pendingEvent} onClose={handleEventResolution} />
+      )}
+      {/* Header / Navigation - sticky top bar on every page */}
+      <div className="bg-slate-900/90 backdrop-blur-xl border-b border-white/5 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
         <div
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-2.5 cursor-pointer group"
           onClick={() => setViewState('LOBBY')}
         >
-          <div className="p-2.5 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl group-hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all transform group-hover:scale-110">
-            <Trophy className="w-6 h-6 text-white" />
+          <div className="p-1.5 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg group-hover:shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-all">
+            <Trophy className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none">Volleyball GM</h1>
-            <p className="text-[10px] font-bold text-blue-400/60 tracking-[0.2em] uppercase mt-1">Management Simulation</p>
+            <div className="text-sm font-black tracking-tight text-white uppercase leading-none">Court Control</div>
+            <div className="text-[9px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mt-0.5">Pro Volleyball Manager</div>
           </div>
         </div>
 
-        {viewState === 'SEASON' && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportSave}
-              className="group flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl border border-white/5 transition-all text-slate-300"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
-              Export Data
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {season?.settings?.isGodMode && (
+            <div className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-full flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
+              <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">God Mode</span>
+            </div>
+          )}
+
+          {viewState === 'SEASON' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportSave}
+                className="group flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl border border-white/5 transition-all text-slate-300"
+              >
+                <Download className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+                Export Data
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Page Content */}
       <div className="pt-4 pb-20">
         {viewState === 'SEASON' && (
           <SeasonView
@@ -682,6 +767,7 @@ function App() {
             allTeams={teams}
             freeAgents={season.freeAgents || []}
             isMyTeam={selectedTeam.id === myTeamId}
+            isGodMode={season.settings?.isGodMode || false}
             onBack={() => setViewState('SEASON')}
             onUpdatePlayer={handleUpdatePlayer}
             onTransferPlayer={handleTransferPlayer}

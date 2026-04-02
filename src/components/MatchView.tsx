@@ -21,6 +21,29 @@ export const MatchView: React.FC<MatchViewProps> = ({ teamA, teamB, onExit, isSi
 
     const simulatedRef = useRef(false);
     const [activeSubTab, setActiveSubTab] = useState<'LOG' | 'BOX_SCORE'>('LOG');
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    type BoxScoreSort = 'position' | 'kills' | 'errors' | 'killBlocks' | 'softBlocks' | 'blockOuts' | 'assists' | 'aces' | 'digs';
+    const [sortCol, setSortCol] = useState<BoxScoreSort>('position');
+    const [sortDesc, setSortDesc] = useState(true);
+
+    const handleSort = (col: BoxScoreSort) => {
+        if (sortCol === col) {
+            setSortDesc(!sortDesc);
+        } else {
+            setSortCol(col);
+            setSortDesc(true);
+        }
+    };
+
+    // Auto-scroll the game log when new events arrive
+    useEffect(() => {
+        if (activeSubTab === 'LOG' && scrollContainerRef.current) {
+            const el = scrollContainerRef.current;
+            el.scrollTop = el.scrollHeight;
+        }
+    }, [matchState?.events.length, activeSubTab]);
+
 
     useEffect(() => {
         if (matchState) return; // DON'T reset if already in progress
@@ -313,7 +336,7 @@ export const MatchView: React.FC<MatchViewProps> = ({ teamA, teamB, onExit, isSi
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 relative" style={{ overflowAnchor: 'none' }}>
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 relative" style={{ overflowAnchor: 'none', scrollBehavior: 'smooth' }}>
                     {activeSubTab === 'LOG' ? (
                         <div className="space-y-3 pb-4">
                             {matchState.events.length === 0 && <p className="text-center text-slate-500 mt-10 italic">Waiting for serve...</p>}
@@ -358,19 +381,74 @@ export const MatchView: React.FC<MatchViewProps> = ({ teamA, teamB, onExit, isSi
                                     <table className="w-full text-left text-[11px] font-bold">
                                         <thead className="text-slate-600 uppercase tracking-tighter border-b border-slate-800">
                                             <tr>
-                                                <th className="pb-2">Player</th>
-                                                <th className="pb-2 text-center">K</th>
-                                                <th className="pb-2 text-center">E</th>
-                                                <th className="pb-2 text-center">B</th>
-                                                <th className="pb-2 text-center text-purple-400">AST</th>
-                                                <th className="pb-2 text-center text-yellow-500">ACE</th>
-                                                <th className="pb-2 text-center">D</th>
+                                                <th className="pb-2 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('position')}>
+                                                    Player {sortCol === 'position' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center cursor-pointer hover:text-white transition-colors" title="Kills" onClick={() => handleSort('kills')}>
+                                                    Kills {sortCol === 'kills' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center cursor-pointer hover:text-white transition-colors" title="Errors" onClick={() => handleSort('errors')}>
+                                                    Err {sortCol === 'errors' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center cursor-pointer hover:text-white transition-colors" title="Kill Blocks (Stuff)" onClick={() => handleSort('killBlocks')}>
+                                                    KB {sortCol === 'killBlocks' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center cursor-pointer hover:text-white transition-colors" title="Soft Blocks (Touches)" onClick={() => handleSort('softBlocks')}>
+                                                    SB {sortCol === 'softBlocks' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center cursor-pointer hover:text-white transition-colors text-red-400" title="Block-Outs (Tooled Off)" onClick={() => handleSort('blockOuts')}>
+                                                    BO {sortCol === 'blockOuts' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center text-purple-400 cursor-pointer hover:text-purple-300 transition-colors" title="Assists" onClick={() => handleSort('assists')}>
+                                                    Ast {sortCol === 'assists' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center text-yellow-500 cursor-pointer hover:text-yellow-400 transition-colors" title="Aces" onClick={() => handleSort('aces')}>
+                                                    Ace {sortCol === 'aces' && (sortDesc ? '↓' : '↑')}
+                                                </th>
+                                                <th className="pb-2 text-center cursor-pointer hover:text-white transition-colors" title="Digs" onClick={() => handleSort('digs')}>
+                                                    Dig {sortCol === 'digs' && (sortDesc ? '↓' : '↑')}
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/50">
                                             {team.players
-                                                .filter(p => matchState.playerStats[p.id])
-                                                .sort((a, b) => (matchState.playerStats[b.id]?.performanceScore || 0) - (matchState.playerStats[a.id]?.performanceScore || 0))
+                                                .filter(p => {
+                                                    const s = matchState.playerStats[p.id];
+                                                    // Only show if they actually played: either they started, or they recorded at least 1 meaningful stat
+                                                    const isStarter = Object.values(team.starters).includes(p.id);
+                                                    const hasStats = s.kills > 0 || s.errors > 0 || s.killBlocks > 0 || s.softBlocks > 0 || s.blockOuts > 0 || s.assists > 0 || s.aces > 0 || s.digs > 0;
+                                                    return isStarter || hasStats;
+                                                })
+                                                .sort((a, b) => {
+                                                    const sA = matchState.playerStats[a.id];
+                                                    const sB = matchState.playerStats[b.id];
+                                                    const dir = sortDesc ? 1 : -1;
+                                                    
+                                                    if (sortCol === 'position') {
+                                                        // Sort by positional order, then prioritize starters over bench
+                                                        const posOrder: Record<string, number> = { 'S': 1, 'OH': 2, 'OPP': 3, 'MB': 4, 'L': 5 };
+                                                        const posA = posOrder[a.position] || 99;
+                                                        const posB = posOrder[b.position] || 99;
+                                                        if (posA !== posB) return (posA - posB) * dir;
+                                                        
+                                                        const startA = Object.values(team.starters).includes(a.id) ? 0 : 1;
+                                                        const startB = Object.values(team.starters).includes(b.id) ? 0 : 1;
+                                                        if (startA !== startB) return (startA - startB) * dir;
+                                                        return 0; // fallback
+                                                    }
+                                                    
+                                                    // Number sorting
+                                                    if (sortCol === 'kills') return (sB.kills - sA.kills) * dir;
+                                                    if (sortCol === 'errors') return (sB.errors - sA.errors) * dir;
+                                                    if (sortCol === 'killBlocks') return (sB.killBlocks - sA.killBlocks) * dir;
+                                                    if (sortCol === 'softBlocks') return (sB.softBlocks - sA.softBlocks) * dir;
+                                                    if (sortCol === 'blockOuts') return (sB.blockOuts - sA.blockOuts) * dir;
+                                                    if (sortCol === 'assists') return (sB.assists - sA.assists) * dir;
+                                                    if (sortCol === 'aces') return (sB.aces - sA.aces) * dir;
+                                                    if (sortCol === 'digs') return (sB.digs - sA.digs) * dir;
+                                                    
+                                                    return 0;
+                                                })
                                                 .map(p => {
                                                     const s = matchState.playerStats[p.id];
                                                     return (
@@ -378,10 +456,13 @@ export const MatchView: React.FC<MatchViewProps> = ({ teamA, teamB, onExit, isSi
                                                             <td className="py-2.5 text-white flex items-center gap-2">
                                                                 <span className="text-[9px] text-slate-500 w-4">{p.position}</span>
                                                                 {p.lastName}
+                                                                {!Object.values(team.starters).includes(p.id) && <span className="text-[8px] text-slate-600 ml-1">(SUB)</span>}
                                                             </td>
                                                             <td className="py-2.5 text-center text-emerald-400 font-bold tabular-nums">{s.kills}</td>
                                                             <td className="py-2.5 text-center text-red-500 tabular-nums">{s.errors}</td>
-                                                            <td className="py-2.5 text-center text-blue-400 tabular-nums">{s.blocks}</td>
+                                                            <td className="py-2.5 text-center text-blue-400 font-bold tabular-nums">{s.killBlocks}</td>
+                                                            <td className="py-2.5 text-center text-blue-400/60 tabular-nums italic">{s.softBlocks}</td>
+                                                            <td className="py-2.5 text-center text-orange-400 tabular-nums">{s.blockOuts}</td>
                                                             <td className="py-2.5 text-center text-purple-400 font-bold tabular-nums">{s.assists}</td>
                                                             <td className="py-2.5 text-center text-yellow-500 tabular-nums">{s.aces}</td>
                                                             <td className="py-2.5 text-center text-slate-400 tabular-nums">{s.digs}</td>

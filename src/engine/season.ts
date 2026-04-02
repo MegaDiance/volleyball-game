@@ -1,4 +1,4 @@
-import type { Player, Team, Achievement, LeagueHistoryEntry } from './models';
+import type { Player, Team, Achievement, LeagueHistoryEntry, LeagueSettings, RandomEvent } from './models';
 import { generatePlayer } from './generator';
 
 export interface PlayoffMatch {
@@ -47,9 +47,11 @@ export interface Season {
     achievements?: Achievement[];
     year: number;
     history: LeagueHistoryEntry[];
+    settings: LeagueSettings;
+    pendingEvents: RandomEvent[];
 }
 
-export function createSeason(teams: Team[], year: number = 1, history: LeagueHistoryEntry[] = []): Season {
+export function createSeason(teams: Team[], year: number = 1, history: LeagueHistoryEntry[] = [], settings: LeagueSettings = { isGodMode: false, difficulty: 'NORMAL' }): Season {
     const standings: Season['standings'] = {};
     teams.forEach(t => { standings[t.id] = { wins: 0, losses: 0, setsWon: 0, setsLost: 0, points: 0 } });
 
@@ -99,6 +101,8 @@ export function createSeason(teams: Team[], year: number = 1, history: LeagueHis
         cumulativeStats: {},
         achievements: [],
         year,
-        history
+        history,
+        settings,
+        pendingEvents: []
     };
 }

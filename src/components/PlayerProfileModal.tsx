@@ -2,6 +2,8 @@ import React from 'react';
 import { X, Trophy, Activity, Shield } from 'lucide-react';
 import type { Player, Team } from '../engine/models';
 import type { Season } from '../engine/season';
+import { PlayerAvatar } from './PlayerAvatar';
+import { generateFace, codeToFace } from '../engine/avatarGenerator';
 interface PlayerProfileModalProps {
     player: Player;
     team?: Team;
@@ -35,8 +37,12 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, 
                     </button>
 
                     <div className="absolute -bottom-12 left-10 flex items-end gap-6">
-                        <div className="w-24 h-24 bg-slate-800 rounded-3xl border-4 border-slate-900 flex items-center justify-center shadow-xl">
-                            <span className="text-4xl font-black text-white">{player.firstName[0]}{player.lastName[0]}</span>
+                        <div className="w-24 h-24 bg-slate-800 rounded-3xl border-4 border-slate-900 flex items-center justify-center shadow-xl overflow-hidden relative">
+                            <PlayerAvatar 
+                                face={player.faceCode ? (codeToFace(player.faceCode) || generateFace(player.id)) : generateFace(player.id)} 
+                                size={90} 
+                                className="absolute bottom-0" 
+                            />
                         </div>
                         <div className="pb-2">
                             <div className="flex items-center gap-2 mb-1">

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Court Control — Player Face Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0f1e;
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: #0f172a;
+    border-bottom: 1px solid #ffffff0d;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .logo { font-size: 1.5rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.05em; }
+  .logo span { color: #3b82f6; }
+  .subtitle { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: #60748880; }
+  
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    width: 100%;
+  }
+  
+  .preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+  
+  .avatar-container {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid #ffffff0d;
+    border-radius: 2rem;
+    padding: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .controls {
+    background: #0f172a;
+    border: 1px solid #ffffff0d;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+  }
+  
+  .section-title {
+    font-size: 0.6rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #475569;
+    margin-bottom: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ffffff08;
+  }
+  .section-title:first-child { border-top: none; padding-top: 0; }
+  
+  .option-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .opt-btn {
+    padding: 0.4rem 0.875rem;
+    border-radius: 0.625rem;
+    border: 1px solid #ffffff10;
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .opt-btn:hover { background: #334155; color: white; }
+  .opt-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; }
+  
+  .color-dots {
+    display: flex;
+    gap: 0.625rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+  .color-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .color-dot:hover { transform: scale(1.15); }
+  .color-dot.active { border-color: white; }
+  
+  .export-section {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #1e293b;
+    border-radius: 1rem;
+    border: 1px solid #ffffff08;
+  }
+  .code-box {
+    background: #0a0f1e;
+    border: 1px solid #ffffff10;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #60a5fa;
+    word-break: break-all;
+    margin: 0.75rem 0;
+    min-height: 4em;
+  }
+  .copy-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: #3b82f6;
+    border: none;
+    border-radius: 0.75rem;
+    color: white;
+    font-weight: 900;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { background: #2563eb; transform: scale(1.02); }
+  
+  #face-svg { display: block; }
+  
+  .player-name {
+    font-size: 1.5rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+    color: white;
+    text-align: center;
+  }
+  .player-pos {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #3b82f6;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Court<span>Control</span></div>
+    <div class="subtitle">Player Face Builder</div>
+  </div>
+</header>
+
+<main>
+  <div class="preview">
+    <div class="avatar-container">
+      <svg id="face-svg" width="240" height="240" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="player-name" id="player-name">Your Player</div>
+    <div class="player-pos" id="player-pos">Customize Below</div>
+    <div class="export-section">
+      <div style="font-size:0.65rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem">Face Code (copy to game)</div>
+      <div class="code-box" id="face-code">Generate your face code here.</div>
+      <button class="copy-btn" onclick="copyCode()">📋 Copy Code to Clipboard</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="section-title">Skin Tone</div>
+    <div class="color-dots" id="skin-picker"></div>
+
+    <div class="section-title">Face Shape</div>
+    <div class="option-grid" id="face-shape-picker"></div>
+
+    <div class="section-title">Hair Style</div>
+    <div class="option-grid" id="hair-style-picker"></div>
+
+    <div class="section-title">Hair Color</div>
+    <div class="color-dots" id="hair-color-picker"></div>
+
+    <div class="section-title">Eye Shape</div>
+    <div class="option-grid" id="eye-shape-picker"></div>
+
+    <div class="section-title">Eyebrows</div>
+    <div class="option-grid" id="eyebrow-picker"></div>
+
+    <div class="section-title">Mouth</div>
+    <div class="option-grid" id="mouth-picker"></div>
+
+    <div class="section-title">Accessory</div>
+    <div class="option-grid" id="accessory-picker"></div>
+  </div>
+</main>
+
+<script>
+const SKIN_TONES = ['#FDDBB4','#F0C27F','#C68642','#8D5524','#6B3A2A','#4A2511','#FFD9CC','#FFECDB'];
+const HAIR_COLORS = ['#2C1B0E','#5C3A1E','#8B6914','#D4A017','#E87B52','#A9A9A9'];
+
+let face = {
+  skinTone: 0,
+  faceShape: 'oval',
+  hairStyle: 1,
+  hairColor: 0,
+  eyeShape: 0,
+  eyebrows: 0,
+  mouthStyle: 1,
+  accessory: 'none'
+};
+
+function renderFace() {
+  const svg = document.getElementById('face-svg');
+  const skin = SKIN_TONES[face.skinTone];
+  const hair = HAIR_COLORS[face.hairColor];
+
+  const faceShapes = {
+    oval: 'M 50 15 C 80 15, 90 40, 90 60 C 90 82, 78 93, 50 95 C 22 93, 10 82, 10 60 C 10 40, 20 15, 50 15 Z',
+    round: 'M 50 18 C 76 18, 88 36, 88 58 C 88 78, 77 90, 50 90 C 23 90, 12 78, 12 58 C 12 36, 24 18, 50 18 Z',
+    square: 'M 15 20 L 85 20 C 88 20, 90 24, 90 30 L 90 75 C 90 84, 82 92, 50 92 C 18 92, 10 84, 10 75 L 10 30 C 10 24, 12 20, 15 20 Z',
+    sharp: 'M 50 14 C 74 14, 88 32, 88 55 C 88 75, 74 90, 50 96 C 26 90, 12 75, 12 55 C 12 32, 26 14, 50 14 Z'
+  };
+
+  const eyeShapes = [
+    (x,y) => `<circle cx="${x}" cy="${y}" r="6" fill="white"/><circle cx="${x}" cy="${y}" r="3.5" fill="#1a1a1a"/><circle cx="${x+1.5}" cy="${y-1.5}" r="1" fill="white"/>`,
+    (x,y) => `<ellipse cx="${x}" cy="${y}" rx="7" ry="4.5" fill="white"/><circle cx="${x}" cy="${y}" r="3" fill="#1a1a1a"/><circle cx="${x+1}" cy="${y-1}" r="0.8" fill="white"/>`,
+    (x,y) => `<ellipse cx="${x}" cy="${y}" rx="7.5" ry="6.5" fill="white"/><circle cx="${x}" cy="${y}" r="4" fill="#1a1a1a"/><circle cx="${x+1.5}" cy="${y-1.5}" r="1.2" fill="white"/>`,
+    (x,y) => `<ellipse cx="${x}" cy="${y+1}" rx="6.5" ry="4" fill="white"/><circle cx="${x}" cy="${y+1}" r="3" fill="#1a1a1a"/><circle cx="${x+1}" cy="${y}" r="0.8" fill="white"/>`,
+    (x,y) => `<path d="M ${x-7} ${y} Q ${x} ${y-5}, ${x+7} ${y} Q ${x} ${y+5}, ${x-7} ${y} Z" fill="white"/><circle cx="${x}" cy="${y}" r="3" fill="#1a1a1a"/><circle cx="${x+1}" cy="${y-1}" r="0.8" fill="white"/>`,
+  ];
+
+  const mouths = [
+    (x,y) => `<line x1="${x-6}" y1="${y}" x2="${x+6}" y2="${y}" stroke="#333" stroke-width="2" stroke-linecap="round"/>`,
+    (x,y) => `<path d="M ${x-6} ${y} Q ${x} ${y+4}, ${x+6} ${y}" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/>`,
+    (x,y) => `<path d="M ${x-7} ${y-1} Q ${x} ${y+7}, ${x+7} ${y-1}" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/>`,
+    (x,y) => `<path d="M ${x-6} ${y+1} Q ${x} ${y-2}, ${x+6} ${y+1}" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/>`,
+  ];
+
+  const eyeG = eyeShapes[face.eyeShape];
+  const mouthG = mouths[face.mouthStyle];
+
+  const eyebrowsMap = {
+    0: `<path d="M 26 40 Q 36 36, 42 40" fill="none" stroke="${hair}" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 58 40 Q 64 36, 74 40" fill="none" stroke="${hair}" stroke-width="2" stroke-linecap="round"/>`,
+    1: `<path d="M 25 39 Q 35 34, 43 38" fill="none" stroke="${hair}" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M 57 38 Q 65 34, 75 39" fill="none" stroke="${hair}" stroke-width="2.5" stroke-linecap="round"/>`,
+    2: `<line x1="26" y1="38" x2="42" y2="40" stroke="${hair}" stroke-width="2" stroke-linecap="round"/>
+        <line x1="58" y1="40" x2="74" y2="38" stroke="${hair}" stroke-width="2" stroke-linecap="round"/>`,
+    3: `<path d="M 24 41 Q 34 35, 44 40" fill="none" stroke="${hair}" stroke-width="3" stroke-linecap="round"/>
+        <path d="M 56 40 Q 66 35, 76 41" fill="none" stroke="${hair}" stroke-width="3" stroke-linecap="round"/>`,
+  };
+
+  const hairPaths = {
+    0: '',
+    1: `<path d="M 14 52 C 10 30, 20 10, 50 10 C 80 10, 90 30, 86 52 L 86 34 C 86 16, 68 8, 50 8 C 32 8, 14 16, 14 34 Z" fill="${hair}"/>`,
+    2: `<path d="M 50 10 C 28 10, 12 24, 12 44 L 12 32 C 12 14, 30 5, 50 5 C 70 5, 88 14, 88 32 L 88 44 C 88 24, 72 10, 50 10 Z" fill="${hair}"/>`,
+    3: `<path d="M 50 10 C 72 10, 90 25, 90 50 L 82 44 C 82 26, 68 12, 50 12 C 32 12, 18 26, 18 44 L 10 50 C 10 25, 28 10, 50 10 Z" fill="${hair}"/>`,
+    4: `<path d="M 14 50 C 14 26, 30 10, 50 10 C 70 10, 86 26, 86 50 C 86 35, 68 20, 50 20 C 32 20, 14 35, 14 50 Z" fill="${hair}"/>`,
+    5: `<path d="M 50 10 C 30 10, 12 22, 12 40 L 88 40 C 88 22, 70 10, 50 10 Z" fill="${hair}"/>`,
+    6: `<path d="M 10 40 C 10 20, 30 8, 50 8 C 70 8, 90 20, 90 40 L 90 30 C 90 12, 74 2, 50 2 C 26 2, 10 12, 10 30 Z" fill="${hair}"/>`,
+    7: `<path d="M 50 8 L 30 25 L 70 25 Z" fill="${hair}"/>`,
+    8: `<path d="M 10 45 L 90 45 L 90 35 C 90 16, 72 8, 50 8 C 28 8, 10 16, 10 35 Z" fill="${hair}"/>`,
+  };
+
+  const accessoryMap = {
+    none: '',
+    headband: `<rect x="10" y="30" width="80" height="10" rx="5" fill="#E53935" opacity="0.9"/>
+               <rect x="10" y="32" width="80" height="6" rx="3" fill="#FF5252" opacity="0.5"/>`,
+    glasses: `<rect x="22" y="46" width="24" height="14" rx="4" fill="none" stroke="#333" stroke-width="2"/>
+              <rect x="54" y="46" width="24" height="14" rx="4" fill="none" stroke="#333" stroke-width="2"/>
+              <line x1="46" y1="53" x2="54" y2="53" stroke="#333" stroke-width="2"/>
+              <line x1="10" y1="53" x2="22" y2="53" stroke="#333" stroke-width="2"/>
+              <line x1="78" y1="53" x2="90" y2="53" stroke="#333" stroke-width="2"/>`,
+    earring: `<circle cx="10" cy="68" r="3" fill="#FFD700" stroke="#DAA520" stroke-width="1"/>`,
+  };
+
+  svg.innerHTML = `
+    ${hairPaths[face.hairStyle]}
+    <path d="${faceShapes[face.faceShape]}" fill="${skin}"/>
+    ${eyebrowsMap[face.eyebrows]}
+    ${eyeG(34, 52)}
+    ${eyeG(66, 52)}
+    <path d="M 50 58 C 47 62, 46 65, 47 67 C 48 68, 50 68, 53 67 C 54 65, 53 62, 50 58 Z" fill="none" stroke="#00000030" stroke-width="1.5"/>
+    ${mouthG(50, 76)}
+    <ellipse cx="10" cy="60" rx="4" ry="6" fill="${skin}"/>
+    <ellipse cx="90" cy="60" rx="4" ry="6" fill="${skin}"/>
+    ${accessoryMap[face.accessory]}
+  `;
+
+  updateCode();
+}
+
+function updateCode() {
+  const code = btoa(JSON.stringify(face));
+  document.getElementById('face-code').textContent = code;
+}
+
+function copyCode() {
+  const code = document.getElementById('face-code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy Code to Clipboard', 2000);
+  });
+}
+
+function buildPicker(id, options, key, labels) {
+  const el = document.getElementById(id);
+  options.forEach((val, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn' + (face[key] === val ? ' active' : '');
+    btn.textContent = labels ? labels[i] : val;
+    btn.onclick = () => {
+      face[key] = val;
+      document.querySelectorAll(`#${id} .opt-btn`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderFace();
+    };
+    el.appendChild(btn);
+  });
+}
+
+function buildColorPicker(id, colors, key) {
+  const el = document.getElementById(id);
+  colors.forEach((color, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'color-dot' + (face[key] === i ? ' active' : '');
+    dot.style.background = color;
+    dot.title = color;
+    dot.onclick = () => {
+      face[key] = i;
+      document.querySelectorAll(`#${id} .color-dot`).forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+      renderFace();
+    };
+    el.appendChild(dot);
+  });
+}
+
+// Build all pickers
+buildColorPicker('skin-picker', SKIN_TONES, 'skinTone');
+buildPicker('face-shape-picker', ['oval','round','square','sharp'], 'faceShape');
+buildPicker('hair-style-picker', [0,1,2,3,4,5,6,7,8], 'hairStyle', ['Bald','Short','Med','Long','Voluminous','Mohawk','Afro','Spiky','Slicked']);
+buildColorPicker('hair-color-picker', HAIR_COLORS, 'hairColor');
+buildPicker('eye-shape-picker', [0,1,2,3,4], 'eyeShape', ['Round','Narrow','Wide','Hooded','Almond']);
+buildPicker('eyebrow-picker', [0,1,2,3], 'eyebrows', ['Arch','Bold','Flat','Thick']);
+buildPicker('mouth-picker', [0,1,2,3], 'mouthStyle', ['Neutral','Smile','Grin','Serious']);
+buildPicker('accessory-picker', ['none','headband','glasses','earring'], 'accessory');
+
+renderFace();
+</script>
+</body>
+</html>
